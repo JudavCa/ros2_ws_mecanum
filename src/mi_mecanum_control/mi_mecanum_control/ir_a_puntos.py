@@ -21,6 +21,10 @@ from rclpy.node import Node
 # ===== TODO: puntos de SU variante: (x [m], y [m], θ [rad]) =====
 PUNTOS = [
     # (x, y, theta),
+    (2.0, 0.0, 0.0),
+    (2.0, 2.0, math.pi / 2.0),
+    (0.0, 2.0, math.pi),
+    (0.0, 0.0, 0.0),
 ]
 
 L1, L2, L3 = 1.0, 1.0, 1.5     # Λ = diag(λ1, λ2, λ3)
@@ -42,10 +46,27 @@ def ley_control(pose, meta):
     pose = (x, y, φ)      meta = (xd, yd, θd)
     Devuelve (u, v, r, alcanzado)
     """
-    # TODO 1: errores de posición (en odom) y de orientación (envuelto)
-    # TODO 2: ¿alcanzado? (TOL_POS y TOL_ANG) -> devolver 0, 0, 0, True
-    # TODO 3: ξ = J(φ)⁺ Λ e
-    # TODO 4: saturar la NORMA de (u, v) a V_MAX conservando la dirección, y |r| a R_MAX
+    # 1: errores de posición (en odom) y de orientación (envuelto)
+    ex = xd - x
+    ey = yd - y
+    eth = envolver(thd - phi)
+    # 2: ¿alcanzado? (TOL_POS y TOL_ANG) -> devolver 0, 0, 0, True
+    if math.hypot(ex, ey) < TOL_POS and abs(eth) < TOL_ANG:
+        return 0.0, 0.0, 0.0, True    
+    # 3: ξ = J(φ)⁺ Λ e
+    lx_ = L1 * ex
+    ly_ = L2 * ey
+    c, s = math.cos(phi), math.sin(phi)
+    u = c * lx_ + s * ly_
+    v = -s * lx_ + c * ly_
+    r = L3 * eth
+    # 4: saturar la NORMA de (u, v) a V_MAX conservando la dirección, y |r| a R_MAX
+    norma = math.hypot(u, v)
+    if norma > V_MAX:
+        k = V_MAX / norma
+        u *= k
+        v *= k
+    r = max(-R_MAX, min(R_MAX, r))
     raise NotImplementedError
 
 
